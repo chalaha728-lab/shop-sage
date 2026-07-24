@@ -1,27 +1,23 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import type { CartItem, CartState } from '@/features/cart/types'
 
-export interface CartItem {
-  id: string
-  productId: string
-  variantId?: string
-  name: string
-  price: number
-  quantity: number
-  image: string
-  sku: string
+const loadCartFromStorage = (): CartItem[] => {
+  try {
+    const stored = localStorage.getItem('cart')
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
 }
 
-export interface CartState {
-  items: CartItem[]
-  isOpen: boolean
-  promoCode: string | null
-  discount: number
+const saveCartToStorage = (items: CartItem[]) => {
+  localStorage.setItem('cart', JSON.stringify(items))
 }
 
 const initialState: CartState = {
-  items: [],
-  isOpen: false,
-  promoCode: null,
+  items: loadCartFromStorage(),
+  isCartOpen: false,
+  appliedCoupon: null,
   discount: 0,
 }
 
@@ -29,53 +25,58 @@ export const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    addItem: (state, action: PayloadAction<Omit<CartItem, 'id'>>) => {
-      const existingItem = state.items.find(
+    addItem: (state, action: PayloadAction<CartItem>) => {
+      const existingIndex = state.items.findIndex(
         (item) => item.productId === action.payload.productId && item.variantId === action.payload.variantId
       )
-      if (existingItem) {
-        existingItem.quantity += action.payload.quantity
+      if (existingIndex >= 0) {
+        state.items[existingIndex].quantity += action.payload.quantity
       } else {
-        state.items.push({ ...action.payload, id: crypto.randomUUID() })
+        state.items.push(action.payload)
       }
+      saveCartToStorage(state.items)
     },
-    removeItem: (state, action: PayloadAction<string>) => {
-      state.items = state.items.filter((item) => item.id !== action.payload)
+    removeItem: (state, action: PayloadAction<{ productId: string; variantId?: string }>) => {
+      state.items = state.items.filter(
+        (item) => !(item.productId === action.payload.productId && item.variantId === action.payload.variantId)
+      )
+      saveCartToStorage(state.items)
     },
-    updateQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
-      const item = state.items.find((i) => i.id === action.payload.id)
+    updateQuantity: (state, action: PayloadAction<{ productId: string; variantId?: string; quantity: number }>) => {
+      const item = state.items.find(
+        (i) => i.productId === action.payload.productId && i.variantId === action.payload.variantId
+      )
       if (item) {
-        item.quantity = Math.max(0, action.payload.quantity)
-        if (item.quantity === 0) {
-          state.items = state.items.filter((i) => i.id !== action.payload.id)
-        }
+        item.quantity = Math.max(1, action.payload.quantity)
+        saveCartToStorage(state.items)
       }
     },
     clearCart: (state) => {
       state.items = []
-      state.promoCode = null
+      state.appliedCoupon = null
       state.discount = 0
-    },
-    setPromoCode: (state, action: PayloadAction<{ code: string; discount: number } | null>) => {
-      if (action.payload) {
-        state.promoCode = action.payload.code
-        state.discount = action.payload.discount
-      } else {
-        state.promoCode = null
-        state.discount = 0
-      }
+      saveCartToStorage(state.items)
     },
     toggleCart: (state) => {
-      state.isOpen = !state.isOpen
+      state.isCartOpen = !state.isCartOpen
     },
     openCart: (state) => {
-      state.isOpen = true
+      state.isCartOpen = true
     },
     closeCart: (state) => {
-      state.isOpen = false
+      state.isCartOpen = false
     },
-    setItems: (state, action: PayloadAction<CartItem[]>) => {
+    applyCoupon: (state, action: PayloadAction<{ code: string; discount: number }>) => {
+      state.appliedCoupon = action.payload.code
+      state.discount = action.payload.discount
+    },
+    removeCoupon: (state) => {
+      state.appliedCoupon = null
+      state.discount = 0
+    },
+    setCartItems: (state, action: PayloadAction<CartItem[]>) => {
       state.items = action.payload
+      saveCartToStorage(state.items)
     },
   },
 })
@@ -85,11 +86,11 @@ export const {
   removeItem,
   updateQuantity,
   clearCart,
-  setPromoCode,
   toggleCart,
   openCart,
   closeCart,
-  setItems,
+  applyCoupon,
+  removeCoupon,
+  setCartItems,
 } = cartSlice.actions
-
 export default cartSlice.reducer
