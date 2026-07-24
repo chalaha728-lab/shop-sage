@@ -1,0 +1,8 @@
+project_type: React (Website)
+framework: react
+platform: Web
+project_category: Website
+created_at: 2026-07-24T11:15:44.766Z
+
+about:
+e-commerce react +vite web
