@@ -1,13 +1,15 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { authSlice } from '@/features/auth/authSlice'
-import { cartSlice } from '@/features/cart/cartSlice'
-import { productSlice } from '@/features/products/productSlice'
+import authReducer from '@/features/auth/authSlice'
+import cartReducer from '@/features/cart/cartSlice'
+import productsReducer from '@/features/products/productsSlice'
+import uiReducer from '@/shared/uiSlice'
 
 export const store = configureStore({
   reducer: {
-    auth: authSlice.reducer,
-    cart: cartSlice.reducer,
-    products: productSlice.reducer,
+    auth: authReducer,
+    cart: cartReducer,
+    products: productsReducer,
+    ui: uiReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -15,6 +17,7 @@ export const store = configureStore({
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
     }),
+  devTools: import.meta.env.DEV,
 })
 
 export type RootState = ReturnType<typeof store.getState>
